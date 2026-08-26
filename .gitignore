@@ -1,0 +1,39 @@
+# ───────────── Quartus II 编译产物 / 中间数据库 ─────────────
+# 这些目录都由 Quartus 编译时自动生成，可从 rtl/ 源码完全复现，不入库
+db/
+incremental_db/
+output_files/
+simulation/
+greybox_tmp/
+hc_output/
+hps_isw_handoff/
+.qsys_edit/
+
+# 工作区状态（记录窗口布局等本地信息，因人而异）
+*.qws
+
+# 编译/时序/装配报告与临时文件
+*.rpt
+*.summary
+*.smsg
+*.jdi
+*.pin
+*.done
+*.qws.bak
+*.bak
+*.sof
+*.pof
+*.sopcinfo
+
+# ───────────── ModelSim 仿真产物 ─────────────
+work/
+transcript
+vsim.wlf
+*.vstf
+modelsim.ini
+
+# ───────────── 编辑器 / 系统 ─────────────
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
