@@ -1,11 +1,11 @@
 #************************************************************
 # THIS IS A WIZARD-GENERATED FILE.                           
 #
-# Version 11.0 Build 157 04/27/2011 SJ Full Version
+# Version 13.0.1 Build 232 06/12/2013 Service Pack 1 SJ Full Version
 #
 #************************************************************
 
-# Copyright (C) 1991-2011 Altera Corporation
+# Copyright (C) 1991-2013 Altera Corporation
 # Your use of Altera Corporation's design tools, logic functions 
 # and other software and tools, and its AMPP partner logic 
 # functions, and any output files from any of the foregoing 
