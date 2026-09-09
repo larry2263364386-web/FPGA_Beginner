@@ -22,7 +22,7 @@
 //
 // 三步流水：
 //   ① cnt_show  自由计数 0→1→2→3→0…，决定"现在轮到第几位"
-//   ② seg_s     位选，one-hot（4'b0001/0010/0100/1000），一次只选通一位
+//   ② seg_s     位选，低有效 one-hot（4'b1110/1101/1011/0111），一次只选通一位
 //   ③ hex→seg   把该位的数字查表转成七段段码
 //──────────────────────────────────────────────────────────────────────
 
@@ -30,7 +30,7 @@ module dyn_seg(
     input               clk     ,   //扫描时钟（200Hz）
     input               reset_l ,   //异步复位，低电平有效
     input       [13:0]  data    ,   //待显示的数值 0~9999
-    output  reg [3:0]   seg_s   ,   //位选，one-hot
+    output  reg [3:0]   seg_s   ,   //位选，低有效 one-hot（0 选通）
     output  reg [7:0]   seg         //段选 {dp,g,f,e,d,c,b,a}
 );
 
@@ -52,20 +52,20 @@ begin
     end
 end
 
-//② 位选：one-hot 编码，4'b0001 选通第 0 位，4'b0010 选通第 1 位……
+//② 位选：低有效 one-hot 编码，4'b1110 选通第 0 位，4'b1101 选通第 1 位……
 //   哪一位对应物理上最左边的数码管，取决于板子接线，现象不对就调这里的顺序
 always @ (negedge reset_l or posedge clk)
 begin
     if (!reset_l) begin
-        seg_s <= 4'b0;
+        seg_s <= 4'b1111;
     end
     else begin
         case(cnt_show[1:0])
-            2'b00 :  seg_s <= 4'b0001;    
-            2'b01 :  seg_s <= 4'b0010;
-            2'b10 :  seg_s <= 4'b0100;
-            2'b11 :  seg_s <= 4'b1000;
-            default: seg_s <= 4'b0000;
+            2'b00 :  seg_s <= 4'b1110;    
+            2'b01 :  seg_s <= 4'b1101;
+            2'b10 :  seg_s <= 4'b1011;
+            2'b11 :  seg_s <= 4'b0111;
+            default: seg_s <= 4'b1111;
         endcase
     end
 end
@@ -78,17 +78,16 @@ assign data1 = data%1000/100;   //百位
 assign data2 = data%100/10  ;   //十位
 assign data3 = data%10      ;   //个位
 
-//③-a 选出当前扫描位对应的数字（纯组合逻辑，always @(*) 里不带时钟）
-//    注：组合逻辑本应用阻塞赋值 =，这里写成 <= 虽然能综合出正确电路，
-//    但仿真时可能与综合结果不一致，是不推荐的写法
+
+//③-a 选出当前扫描位对应的数字（纯组合逻辑，用阻塞赋值 =）
 always @ (*)
 begin
     case(cnt_show[1:0])
-        2'b00 : hex <= data0;
-        2'b01 : hex <= data1;
-        2'b10 : hex <= data2;
-        2'b11 : hex <= data3;
-        default:hex <= 4'b0 ;
+        2'b00 : hex = data0;
+        2'b01 : hex = data1;
+        2'b10 : hex = data2;
+        2'b11 : hex = data3;
+        default:hex = 4'b0 ;
     endcase
  end
  
