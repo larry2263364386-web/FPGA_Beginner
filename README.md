@@ -49,7 +49,7 @@ Quartus 编译产物（`db/`、`incremental_db/`、`output_files/`）已在 `.gi
 | 信号 | 引脚 | 方向 | 说明 |
 |------|------|------|------|
 | `clk` | `PIN_E1` | in | 50 MHz 系统时钟 |
-| `rst_n` | `PIN_D14` | in | 异步复位，低电平有效（KEY4） |
+| `reset_l` | `PIN_D14` | in | 异步复位，低电平有效（KEY4） |
 | `key_0` | `PIN_L12` | in | 按键，按下 = 低电平 |
 | `key_1` | `PIN_L13` | in | 按键，按下 = 低电平 |
 | `led_0` | `PIN_K15` | out | LED，低电平点亮（组合逻辑驱动） |
@@ -62,7 +62,7 @@ Quartus 编译产物（`db/`、`incremental_db/`、`output_files/`）已在 `.gi
 
 1. **`wire` vs `reg`**：`assign` 驱动的输出声明为 `wire`，`always` 块驱动的声明为 `reg`。
 2. **`=` vs `<=`**：组合逻辑用阻塞 `=`，时序逻辑一律用非阻塞 `<=`。
-3. **异步复位**：`negedge rst_n` 写进敏感列表，复位立即生效，不必等时钟沿。
+3. **异步复位**：`negedge reset_l` 写进敏感列表，复位立即生效，不必等时钟沿。
 4. **实际差异**：`led_0` 纳秒级响应但会把按键抖动原样传出；`led_1` 最多晚一个时钟周期
    （20 ns），肉眼无差别，但时钟采样为后续加消抖、状态机留下了接入点。
 
@@ -73,11 +73,17 @@ Programmer 中选 `output_files/hello_world.sof` → Start。
 
 > `.sof` 下载到 SRAM，掉电即失效；掉电保存需转 `.pof` 烧到配置芯片。
 
+### 仿真
+
+`sim/hello_world_tb.v` 用 ModelSim 验证复位与按键：`reset_l` 拉高后依次按下/松开
+`key_0`、`key_1`，对比 `led_0`（组合逻辑，立即跟随）与 `led_1`（时序逻辑，延迟一个时钟沿）。
+工程已在 `.qsf` 配好 NativeLink，Quartus 里 Tools → Run EDA Simulation Tool → RTL Simulation 一键跑。
+
 ### 现象
 
 - 按住 `key_0` → `led_0` 亮，松开 → 灭
 - 按住 `key_1` → `led_1` 亮，松开 → 灭
-- 按住 `rst_n`（KEY4）→ `led_1` 强制熄灭，`led_0` 不受影响
+- 按住 `reset_l`（KEY4）→ `led_1` 强制熄灭，`led_0` 不受影响
 
 > 工程文件仍名为 `hello_world.qpf` / `.qsf`，顶层实体 `hello_world`，未随目录改名。
 

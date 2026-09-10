@@ -23,7 +23,7 @@
 //模块功能：按键控制LED
 // key_0：按键，低电平按下，组合逻辑直接控制led_0
 // key_1：按键，低电平按下，时序逻辑控制led_1
-// rst_n：低电平复位；clk：50M系统时钟
+// reset_l：低电平复位；clk：50M系统时钟
 //
 // 电平约定（由本板硬件决定，务必与原理图一致）：
 //   按键：按下 = 低电平 0，松开 = 高电平 1  （按键一端接地，另一端上拉）
@@ -39,7 +39,7 @@
 
 module hello_world(
     //复位与时钟
-    input        rst_n,      //active low, KEY4，异步复位
+    input        reset_l,      //active low, KEY4，异步复位
     input        clk,        //50MHz 系统时钟
 
     //输入按键信号
@@ -58,10 +58,10 @@ module hello_world(
 assign led_0 = (key_0 == 1'b0) ? 1'b0 : 1'b1;
 
 //时序逻辑LED1，低电平点亮
-// 敏感列表里的 negedge rst_n → 异步复位：复位一拉低立即生效，不必等时钟沿
+// 敏感列表里的 negedge reset_l → 异步复位：复位一拉低立即生效，不必等时钟沿
 // 赋值用 <=（非阻塞）：时序逻辑的标准写法，让所有寄存器"同时"更新
-always @(posedge clk or negedge rst_n) begin
-    if(rst_n==1'b0) begin
+always @(posedge clk or negedge reset_l) begin
+    if(reset_l==1'b0) begin
         led_1 <= 1'b1; //复位输出高，灯灭
     end
     else if(key_1==1'b0)begin
