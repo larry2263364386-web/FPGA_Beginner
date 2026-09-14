@@ -75,9 +75,10 @@ Programmer 中选 `output_files/hello_world.sof` → Start。
 
 ### 仿真
 
-`sim/hello_world_tb.v` 用 ModelSim 验证复位与按键：`reset_l` 拉高后依次按下/松开
-`key_0`、`key_1`，对比 `led_0`（组合逻辑，立即跟随）与 `led_1`（时序逻辑，延迟一个时钟沿）。
-工程已在 `.qsf` 配好 NativeLink，Quartus 里 Tools → Run EDA Simulation Tool → RTL Simulation 一键跑。
+`sim/hello_world_tb.v` 用 `task` 组织成两个用例：`test_reset`（复位后拉高）与
+`test_key`（遍历 00/01/10/11 四种按键组合），`$display` 逐时刻打印 `led_0`/`led_1`，
+对比组合逻辑（立即跟随）与时序逻辑（延迟一个时钟沿）。
+在 `sim/` 目录下 `vsim -do sim.do`，或 Quartus 里 Tools → Run EDA Simulation Tool → RTL Simulation。
 
 ### 现象
 
@@ -95,11 +96,10 @@ Programmer 中选 `output_files/hello_world.sof` → Start。
 第一个**层次化设计**：顶层只做例化和连线，功能拆在三个子模块里。
 
 ```
-clk 50MHz ─→ clk_gen ─┬─ clk_200hz ─→ dyn_seg       扫描，每位刷新 50Hz
-                      └─ clk_10hz  ─→ counter_9999  每 0.1s 加 1
-                                           │
-                                       counter[13:0] ─→ dyn_seg ─→ seg_s[3:0] 位选
-                                                                └→ seg[7:0]   段选
+clk 50MHz ─→ clk_gen ── clk_200hz ─→ dyn_seg    扫描，每位刷新 50Hz
+data[13:0] ────────────────────────→ dyn_seg    待显示数据（仿真注入）
+
+（当前 dyn_seg 接 data 便于仿真验证；counter_9999 输出暂悬空，见「已知问题」）
 ```
 
 | 文件 | 作用 |
@@ -141,9 +141,10 @@ clk 50MHz ─→ clk_gen ─┬─ clk_200hz ─→ dyn_seg       扫描，每�
 
 ### 仿真
 
-`sim/counter_seg_tb.v` 用 ModelSim 跑通顶层 `counter_seg`，验证三个子模块例化与连线无误。
-默认仿真时长 1 µs 只够覆盖复位；计数周期 0.1 s，想看递增需把 `.qsf` 的
-`EDA_TEST_BENCH_RUN_SIM_FOR` 调大到 100 ms 以上。
+`sim/counter_seg_tb.v` 用 `task` 组织成 `test_reset`（复位）与 `test_scan`（注入
+1234/9876/0000 验证七段译码），`$display` 打印 `seg`/`seg_s`。
+在 `sim/` 目录下 `vsim -do sim.do`，或 Quartus 里 Tools → Run EDA Simulation Tool。
+顶层 `data` 端口就是为这个注入加的（见「已知问题」）。
 
 ### 现象
 
@@ -153,3 +154,7 @@ clk 50MHz ─→ clk_gen ─┬─ clk_200hz ─→ dyn_seg       扫描，每�
 
 - `clk_10hz` 由 `clk_200hz` 这个寄存器输出当时钟驱动，属于**衍生时钟**。
   入门够用，工程上应改成「时钟使能」写法：全部寄存器统一挂 50MHz，用 en 脉冲控制更新。
+- **顶层 `data` 端口（仿真注入用）**：为验证段码译码，`dyn_seg` 的 `.data` 现接顶层
+  `data` 而非 `counter`，`counter_9999` 输出悬空；且 `data[13:0]` 在 `.qsf` 未绑引脚。
+  故本版偏仿真验证，板上不会显示计数——恢复计数显示把 `counter_seg.v` 里
+  `.data(data)` 改回 `.data(counter)`（或加一个选择端做 mux）即可。
