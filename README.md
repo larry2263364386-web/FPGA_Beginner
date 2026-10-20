@@ -9,6 +9,7 @@
 |------|------|------|------|
 | [1.1](./1.1) | 按键控制 LED — 组合逻辑 vs 时序逻辑 | `v1.1` | ✅ |
 | [1.2](./1.2) | 0~9999 计数 + 四位数码管动态扫描 | `v1.2` | ✅ |
+| [1.3](./1.3) | 信号生成与时序观测：分频 / 延迟线 / I²C 信号 / SOP-EOP / 片上探针 | `v1.3` | ✅ |
 
 ## 开发环境
 
@@ -158,3 +159,49 @@ data[13:0] ───────────────────────
   `data` 而非 `counter`，`counter_9999` 输出悬空；且 `data[13:0]` 在 `.qsf` 未绑引脚。
   故本版偏仿真验证，板上不会显示计数——恢复计数显示把 `counter_seg.v` 里
   `.data(data)` 改回 `.data(counter)`（或加一个选择端做 mux）即可。
+
+---
+
+## 1.3 · 信号生成与时序观测基础模块
+
+本节不做「外设点亮」类实验，而是 5 个**信号生成 / 时序处理**基础模块，全部
+**无引脚绑定**，主要靠 ModelSim 仿真 + SignalTap II 片上观测验证（`source_probe`
+就是 SignalTap 的 In-System Source & Probe IP）。目录比 1.1/1.2 多嵌套一层：
+`1.3/<工程名>/{rtl,sim,quartus_prj}`。
+
+| 子工程 | 顶层实体 | 功能 |
+|--------|----------|------|
+| [clock_frequency_divider](./1.3/clock_frequency_divider) | `clock_frequency_divider` | 分数分频器（相位累加器），`f_out = f_in × div_N / (2×div_M)` |
+| [fix_delay](./1.3/fix_delay) | `dynamic_delay` | 数字延迟线：固定(`fix_delay`)与动态(`dynamic_delay`)两种，双口 RAM 环形缓冲 |
+| [signal](./1.3/signal) | `signal` | I²C 读/写请求锁存 + 脉宽扩展（单拍 exec → 约 131 周期 flag / I2C_start） |
+| [sop_eop_gen](./1.3/sop_eop_gen) | `sop_eop_gen` | 数据包 SOP/EOP 指示：对 i_en 打拍 + 边沿检测 |
+| [source_probe](./1.3/source_probe) | `source_probe` | SignalTap II In-System Source & Probe（`altsource_probe` IP） |
+
+> `fix_delay` 工程同时含 `fix_delay`（延迟值编译期固定）与 `dynamic_delay`（延迟值
+> 运行时可变）两个模块，共享 `simple_dual_port_ram.v`；Quartus 顶层设为 `dynamic_delay`。
+
+### 学习要点
+
+1. **分数分频 vs 整数分频**：整数分频（÷N）占空比不一定 50%；分数分频用相位累加器
+   每次累加 `div_N`、到 `div_M` 就翻转并减去 `div_M`，平均分频比 `div_M/div_N`。
+2. **数字延迟线**：环形缓冲 + 读写指针错位。`simple_dual_port_ram` 顶层用 `generate`
+   按 `ram_type` 选寄存器 / M9K 实现，`syn_ramstyle` 属性强制综合方式。
+3. **边沿检测**：`o_sop = i_en & ~i_en_d0`、`o_eop = ~i_en & i_en_d0`——把使能打一拍再
+   与当前拍取反相与，得到刚好 1 拍的起始/结束脉冲，类似 AXI-Stream 的 valid/tlast。
+4. **单拍 → 长脉冲（脉宽扩展）**：`signal` 里 exec 单拍触发后，计数器数到 130 再清零，
+   把标志展宽约 131 个周期，用于 I²C 时钟展宽这类慢外设时序。
+5. **衍生时钟警示**：`clk_out`、`clk_200hz` 这类寄存器输出若再拿去当时钟源会形成
+   衍生时钟（1.2 已有「已知问题」）。这里统一用 `clk_en` 时钟使能来冻结/更新。
+
+### 仿真
+
+每个子工程在 `sim/` 下自带 testbench：`clock_frequency_divider` / `fix_delay` /
+`dynamic_delay` 用 ModelSim 脚本（`.do`）或 `iverilog` 编译运行；`signal` /
+`sop_eop_gen` 的 tb 是自校验式，覆盖复位/空闲/读写/单拍多拍包/`clk_en` 冻结等用例，
+跑完打印 `ALL TESTS PASSED`。`source_probe` 无 tb，需配合 SignalTap II 上板观察。
+
+### 说明（无板上现象）
+
+这些模块的 `.qsf` 里都**没有引脚分配**（无 `set_location_assignment`），能综合、
+能仿真，但下载到板上不会有 LED/数码管现象——它们是供仿真与 SignalTap 观测的信号源
+和时序处理单元，不是外设驱动实验。

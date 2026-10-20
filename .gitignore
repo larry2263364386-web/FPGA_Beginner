@@ -21,15 +21,27 @@ hps_isw_handoff/
 *.done
 *.qws.bak
 *.bak
+*.bak1
+*.bak2
 *.sof
 *.pof
 *.sopcinfo
 
 # ───────────── ModelSim 仿真产物 ─────────────
 work/
+rtl_work/
+verilog_libs/
 transcript
+msim_transcript
 vsim.wlf
+*.wlf
+*.vcd
 *.vstf
+*.vo
+*.sdo
+*.sft
+*.xrf
+tcl_stacktrace.txt
 modelsim.ini
 bookmarks.do
 
